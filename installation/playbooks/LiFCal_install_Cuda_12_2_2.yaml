@@ -1,0 +1,69 @@
+---
+- name: Install CUDA
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Download CUDA repository pin file
+      get_url:
+        url: https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
+        dest: /etc/apt/preferences.d/cuda-repository-pin-600
+
+    - name: Download CUDA installer
+      get_url:
+        url: https://developer.download.nvidia.com/compute/cuda/12.2.2/local_installers/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb
+        dest: /tmp/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb
+
+    - name: Install CUDA repository local package
+      apt:
+        deb: /tmp/cuda-repo-ubuntu2004-12-2-local_12.2.2-535.104.05-1_amd64.deb
+
+    - name: Copy CUDA keyring
+      copy:
+        src: /var/cuda-repo-ubuntu2004-12-2-local/cuda-*-keyring.gpg
+        dest: /usr/share/keyrings/
+
+    - name: Update APT package list
+      apt:
+        update_cache: yes
+
+    - name: Install CUDA
+      apt:
+        name: cuda
+        state: present
+
+    - name: Add CUDA to PATH environment variable
+      lineinfile:
+        path: /etc/profile.d/cuda.sh
+        line: 'export PATH=/usr/local/cuda-12.2/bin${PATH:+:${PATH}}'
+        create: yes
+
+    - name: Add CUDA to LD_LIBRARY_PATH environment variable
+      lineinfile:
+        path: /etc/profile.d/cuda.sh
+        line: 'export LD_LIBRARY_PATH=/usr/local/cuda-12.2/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}'
+        create: yes
+
+    - name: Source the CUDA environment script
+      shell: source /etc/profile.d/cuda.sh
+      args:
+        executable: /bin/bash
+
+    - name: Source the user's .bashrc
+      shell: source ~/.bashrc
+      args:
+        executable: /bin/bash
+
+    - name: Verify CUDA installation
+      command: nvcc --version
+      register: cuda_version
+
+    - name: Display CUDA version
+      debug:
+        msg: "CUDA version installed: {{ cuda_version.stdout }}"
+
+    - name: Reboot the system
+      reboot:
+        msg: "Reboot initiated by Ansible after installing Nvidia driver"
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        reboot_timeout: 600

@@ -1,0 +1,66 @@
+---
+- name: Install Ceres Solver
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Ensure dependencies are installed
+      apt:
+        name:
+          - cmake
+          - build-essential
+          - wget
+          - tar
+          - libeigen3-dev
+          - libatlas-base-dev
+          - libgoogle-glog-dev
+          - libsuitesparse-dev
+        state: present
+        update_cache: yes
+
+    - name: Ensure the download directory exists
+      file:
+        path: /tmp
+        state: directory
+
+    - name: Check if Ceres Solver tarball is already present
+      stat:
+        path: /tmp/ceres-solver-2.1.0.tar.gz
+      register: ceres_tarball
+
+    - name: Download Ceres Solver
+      get_url:
+        url: http://ceres-solver.org/ceres-solver-2.1.0.tar.gz
+        dest: /tmp/ceres-solver-2.1.0.tar.gz
+      when: not ceres_tarball.stat.exists
+
+    - name: Extract Ceres Solver
+      unarchive:
+        src: /tmp/ceres-solver-2.1.0.tar.gz
+        dest: /tmp/
+        remote_src: yes
+        creates: /tmp/ceres-solver-2.1.0
+
+    - name: Create build directory
+      file:
+        path: /tmp/ceres-bin
+        state: directory
+
+    - name: Configure Ceres Solver build with CMake
+      command: cmake ../ceres-solver-2.1.0
+      args:
+        chdir: /tmp/ceres-bin
+
+    - name: Build Ceres Solver
+      command: make -j3
+      args:
+        chdir: /tmp/ceres-bin
+
+    - name: Test Ceres Solver build
+      command: make test
+      args:
+        chdir: /tmp/ceres-bin
+
+    - name: Install Ceres Solver
+      command: make install
+      args:
+        chdir: /tmp/ceres-bin

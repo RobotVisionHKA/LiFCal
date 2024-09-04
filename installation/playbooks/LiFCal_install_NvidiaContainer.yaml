@@ -1,0 +1,50 @@
+---
+- name: Install NVIDIA Container Toolkit for Docker
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Install curl and gpg
+      ansible.builtin.apt:
+        name:
+          - curl
+          - gpg
+        state: present
+        update_cache: yes
+    
+    - name: Download and add NVIDIA GPG key
+      shell: |
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+    - name: Add NVIDIA Container Toolkit repository
+      shell: |
+        curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+        tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+      args:
+        creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install NVIDIA Container Toolkit
+      ansible.builtin.apt:
+        name: nvidia-container-toolkit
+        state: present
+
+    - name: Restart Docker service
+      service:
+        name: docker
+        state: restarted
+
+    - name: Verify NVIDIA Container Toolkit installation
+      command: docker run --rm --gpus all nvidia/cuda:12.2.2-devel-ubuntu20.04 nvidia-smi
+      register: result
+      ignore_errors: yes
+
+    - name: Print verification output
+      debug:
+        msg: "{{ result.stdout }}"

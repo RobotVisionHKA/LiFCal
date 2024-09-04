@@ -1,0 +1,22 @@
+---
+- name: Install Nvidia Driver and Reboot
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Update the apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install ubuntu-drivers-common and nvidia-driver-535
+      apt:
+        name:
+          - ubuntu-drivers-common
+          - nvidia-driver-535
+        state: present
+
+    - name: Reboot the system
+      reboot:
+        msg: "Reboot initiated by Ansible after installing Nvidia driver"
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        reboot_timeout: 600

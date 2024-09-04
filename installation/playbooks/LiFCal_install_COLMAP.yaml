@@ -1,0 +1,73 @@
+---
+- name: Install COLMAP
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - git
+          - cmake
+          - ninja-build
+          - build-essential
+          - libboost-program-options-dev
+          - libboost-filesystem-dev
+          - libboost-graph-dev
+          - libboost-system-dev
+          - libeigen3-dev
+          - libflann-dev
+          - libfreeimage-dev
+          - libmetis-dev
+          - libgoogle-glog-dev
+          - libgtest-dev
+          - libsqlite3-dev
+          - libglew-dev
+          - qtbase5-dev
+          - libqt5opengl5-dev
+          - libcgal-dev
+          - libceres-dev
+        state: present
+        update_cache: yes
+
+    - name: Clone COLMAP repository
+      git:
+        repo: https://github.com/colmap/colmap.git
+        dest: /tmp/colmap
+
+    - name: Checkout specific commit
+      command: git checkout 1f69517d360463bf2e8936fdd1f1e61f719ea6eb
+      args:
+        chdir: /tmp/colmap
+
+    - name: Create build directory
+      file:
+        path: /tmp/colmap/build
+        state: directory
+
+    - name: Check if CUDA is installed
+      command: nvcc --version
+      register: cuda_check
+      ignore_errors: true
+
+    - name: Set CUDA options fact
+      set_fact:
+        cuda_options: ""
+      when: cuda_check.rc == 0
+
+    - name: Configure COLMAP build with CMake
+      command: >
+        cmake .. -GNinja -DCMAKE_CUDA_ARCHITECTURES=native -DCMAKE_CUDA_COMPILER=/usr/lib/nvidia-cuda-toolkit/bin/nvcc
+      args:
+        chdir: /tmp/colmap/build
+
+    - name: Build COLMAP with Ninja
+      command: ninja
+      args:
+        chdir: /tmp/colmap/build
+
+    - name: Install COLMAP
+      command: sudo ninja install
+      args:
+        chdir: /tmp/colmap/build
+
+
